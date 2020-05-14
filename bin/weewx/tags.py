@@ -360,12 +360,23 @@ class ObservationBinder(object):
         try:
             # If we cannot perform the aggregation, we will get an UnknownType or
             # UnknownAggregation error. Be prepared to catch it.
-            result = weewx.xtypes.get_aggregate(self.obs_type, self.timespan, aggregate_type,
-                                                db_manager, val=val, **self.option_dict)
+            result = weewx.xtypes.get_aggregate(self.obs_type, self.timespan, aggregate_type, db_manager,
+                                                val=val,
+                                                context=self.context,
+                                                formatter=self.formatter,
+                                                converter=self.converter,
+                                                **self.option_dict)
         except (weewx.UnknownType, weewx.UnknownAggregation):
             # Signal Cheetah that we don't know how to do this by raiing an AttributeError.
             raise AttributeError(self.obs_type)
-        return weewx.units.ValueHelper(result, self.context, self.formatter, self.converter)
+
+        # If a tuple was returned, it's probably a ValueTuple and we are ready to go.
+        # Anything else and it is some specialized object, perhaps a functor. Just return it for
+        # more processing.
+        if isinstance(result, (tuple, weewx.units.UnknownType)):
+            return weewx.units.ValueHelper(result, self.context, self.formatter, self.converter)
+        else:
+            return result
 
 
 # ===============================================================================
